@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tayyab database - developed by Tayyab</title>
+    <style>
+        body {
+            background-color: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 2px solid #0f0;
+            border-radius: 10px;
+            box-shadow: 0 0 15px #0f0, 0 0 30px #0f0;
+            animation: glow 2s infinite alternate;
+        }
+        @keyframes glow {
+            from { box-shadow: 0 0 10px #0f0, 0 0 20px #0f0; }
+            to { box-shadow: 0 0 15px #0f0, 0 0 30px #0f0, 0 0 45px #0f0; }
+        }
+        h1 {
+            color: #0f0;
+            text-shadow: 0 0 5px #0f0;
+            margin-bottom: 30px;
+        }
+        .input-box {
+            background-color: #111;
+            border: 1px solid #0f0;
+            color: #0f0;
+            padding: 10px;
+            width: 300px;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        .btn {
+            background-color: #111;
+            border: 1px solid #0f0;
+            color: #0f0;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            margin: 10px 5px;
+        }
+        .btn:hover {
+            background-color: #0f0;
+            color: #000;
+            box-shadow: 0 0 10px #0f0;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px dashed #0f0;
+            text-align: left;
+            min-height: 100px;
+            background-color: #111;
+        }
+        .footer {
+            margin-top: 30px;
+            font-size: 12px;
+            color: #0a0;
+        }
+        .loader {
+            border: 3px solid #0a0;
+            border-radius: 50%;
+            border-top: 3px solid #000;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            color: #f00;
+        }
+        .success {
+            color: #0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>TAYYAB DATABASE</h1>
+        <p>Enter phone number (03xxxxxxxxx) or 13-digit CNIC:</p>
+        <input type="text" id="searchInput" class="input-box" placeholder="03xxxxxxxxx or 13-digit CNIC">
+        <br>
+        <button onclick="searchData()" class="btn">Search</button>
+        <button onclick="clearFields()" class="btn">Clear</button>
+        <div class="loader" id="loader"></div>
+        <div id="result">Results will appear here...</div>
+        <div class="footer">
+            Developed by Tayyab
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'https://famofcfallxd.serv00.net/apis/simdataapi.php';
+        
+        function searchData() {
+            const input = document.getElementById('searchInput').value.trim();
+            const resultDiv = document.getElementById('result');
+            const loader = document.getElementById('loader');
+            
+            if (!/^(03\d{9}|\d{13})$/.test(input)) {
+                resultDiv.innerHTML = '<span class="error">Invalid input. Please enter:<br>- 11 digit phone number starting with 03 (03xxxxxxxxx)<br>- OR 13 digit CNIC</span>';
+                return;
+            }
+            
+            resultDiv.innerHTML = "";
+            loader.style.display = "block";
+            
+            const apiUrl = `${API_BASE_URL}?num=${input}`;
+            
+            fetch(apiUrl)
+                .then(response => {
+                    if (!response.ok) throw new Error('Direct fetch failed');
+                    return response.text();
+                })
+                .then(text => {
+                    try {
+                        displayResults(JSON.parse(text));
+                    } catch (e) {
+                        const cleaned = text.replace(/^\/\*\*\/.*?\(/g, '').replace(/\);?$/g, '');
+                        try {
+                            displayResults(JSON.parse(cleaned));
+                        } catch (e) {
+                            useProxy(apiUrl);
+                        }
+                    }
+                })
+                .catch(() => useProxy(apiUrl));
+        }
+        
+        function useProxy(apiUrl) {
+            const resultDiv = document.getElementById('result');
+            const loader = document.getElementById('loader');
+            
+            fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Proxy request failed');
+                    return response.json();
+                })
+                .then(proxyData => {
+                    try {
+                        displayResults(JSON.parse(proxyData.contents));
+                    } catch (e) {
+                        const cleaned = proxyData.contents.replace(/^\/\*\*\/.*?\(/g, '').replace(/\);?$/g, '');
+                        displayResults(JSON.parse(cleaned));
+                    }
+                })
+                .catch(error => {
+                    loader.style.display = "none";
+                    resultDiv.innerHTML = `<span class="error">Error: ${error.message}</span>`;
+                    console.error('Error:', error);
+                });
+        }
+        
+        function displayResults(data) {
+            const resultDiv = document.getElementById('result');
+            const loader = document.getElementById('loader');
+            loader.style.display = "none";
+            
+            if (!data) {
+                resultDiv.innerHTML = '<span class="error">No data received</span>';
+                return;
+            }
+            
+            if (data.status === "error") {
+                resultDiv.innerHTML = `<span class="error">${data.message || 'No data found'}</span>`;
+                return;
+            }
+            
+            let html = '<span class="success"><strong>Search Results:</strong></span><br><br>';
+            
+            if (data.data && Array.isArray(data.data)) {
+                data.data.forEach((obj, i) => {
+                    html += `<strong>Record ${i+1}:</strong><br>`;
+                    for (const [key, value] of Object.entries(obj)) {
+                        html += `&nbsp;&nbsp;<strong>${key}:</strong> ${value}<br>`;
+                    }
+                    html += '<br>';
+                });
+            } else {
+                for (const [key, value] of Object.entries(data)) {
+                    if (key !== 'status') html += `<strong>${key}:</strong> ${value}<br>`;
+                }
+            }
+            
+            resultDiv.innerHTML = html || '<span class="error">No valid data found</span>';
+        }
+        
+        function clearFields() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('result').innerHTML = 'Results will appear here...';
+            document.getElementById('loader').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
